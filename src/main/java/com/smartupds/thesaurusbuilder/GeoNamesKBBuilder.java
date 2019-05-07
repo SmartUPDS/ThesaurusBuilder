@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.log4j.Log4j;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 /** KB Builder with cities from GeoNames
  * 
@@ -23,13 +23,14 @@ import org.apache.commons.lang3.tuple.Pair;
 @Log4j
 public class GeoNamesKBBuilder {
     private Multimap<String,GeoNameEntry> cities=HashMultimap.create();
-    private Map<String,Pair<String,String>> countryInfo;
+    private Map<String,Triple<String,String,String>> countryInfo;
     private String geonamesDumpPath;
     private static final int INDEX_OF_CITIES_GEONAME_ID=0;
     private static final int INDEX_OF_CITIES_NAME=1;
     private static final int INDEX_OF_CITIES_LATUTUDE=4;
     private static final int INDEX_OF_CITIES_LONGITUDE=5;
     private static final int INDEX_OF_CITIES_COUNTRY_CODE=8;
+    private static final int INDEX_OF_CONTINENT=8;
     private static final int INDEX_OF_COUNTRY_ISO_CODE=0;
     private static final int INDEX_OF_COUNTRY_NAME=4;
     private static final int INDEX_OF_COUNTRY_CODE=16;
@@ -46,16 +47,18 @@ public class GeoNamesKBBuilder {
         }
     }
     
-    public Map<String,Pair<String,String>> loadCountriesInfo(String countriesInfoDumpPath) throws IOException{
+    public Map<String,Triple<String,String,String>> loadCountriesInfo(String countriesInfoDumpPath) throws IOException{
         log.info("Loading information about countries");
-        Map<String,Pair<String,String>> retMap=new HashMap<>();
+        Map<String,Triple<String,String,String>> retMap=new HashMap<>();
         String line;
         BufferedReader br=new BufferedReader(new FileReader(new File(countriesInfoDumpPath)));
         while((line=br.readLine())!=null){
             if(!line.startsWith("#")){
                 String[] countryTokens=line.split("\t");
                 retMap.put(countryTokens[INDEX_OF_COUNTRY_ISO_CODE],
-                           Pair.of(countryTokens[INDEX_OF_COUNTRY_NAME], countryTokens[INDEX_OF_COUNTRY_CODE]));
+                           Triple.of(countryTokens[INDEX_OF_COUNTRY_NAME], 
+                                     countryTokens[INDEX_OF_COUNTRY_CODE], 
+                                     countryTokens[INDEX_OF_CONTINENT]));
             }
         }
         return retMap;
@@ -75,7 +78,8 @@ public class GeoNamesKBBuilder {
                 entry.setLongitude(cityTokens[INDEX_OF_CITIES_LONGITUDE]);
                 entry.setCountryCodeIso(cityTokens[INDEX_OF_CITIES_COUNTRY_CODE]);
                 entry.setCountry(this.countryInfo.get(cityTokens[INDEX_OF_CITIES_COUNTRY_CODE]).getLeft());
-                entry.setCountryCode(this.countryInfo.get(cityTokens[INDEX_OF_CITIES_COUNTRY_CODE]).getRight());
+                entry.setCountryCode(this.countryInfo.get(cityTokens[INDEX_OF_CITIES_COUNTRY_CODE]).getMiddle());
+                entry.setContinentCode(this.countryInfo.get(cityTokens[INDEX_OF_CITIES_COUNTRY_CODE]).getRight());
                 this.cities.put(entry.getCode(), entry);
             }
         }catch(IOException ex){
@@ -90,14 +94,15 @@ public class GeoNamesKBBuilder {
         for(GeoNameEntry entry : this.cities.values()){
             dataBuilder.append(entry.toTrig())
                        .append("\n\n");
-            dataBuilder=this.checkAndExport(dataBuilder,filename);
+            dataBuilder=this.checkAndExport(dataBuilder,filename,false);
         }
+        this.checkAndExport(dataBuilder,filename,true);
     }
     
-    public StringBuilder checkAndExport(StringBuilder dataBuilder, String filename) throws ThesaurusBuilderException{
-        if(dataBuilder.length()>=Common.EXPORT_MAXIMUM_FILESIZE){
+    public StringBuilder checkAndExport(StringBuilder dataBuilder, String filename, boolean ignoreSize) throws ThesaurusBuilderException{
+        if(ignoreSize){
             try{
-                BufferedWriter writer=new BufferedWriter(new FileWriter(new File(filename+"-"+(EXPORT_COUNTER++)+"."+Common.EXPORT_FILE_EXTENSION)));
+                BufferedWriter writer=new BufferedWriter(new FileWriter(new File(filename+"-"+(EXPORT_COUNTER)+"."+Common.EXPORT_FILE_EXTENSION)));
                 writer.append(dataBuilder.toString());
                 writer.flush();
                 writer.close();
@@ -107,7 +112,20 @@ public class GeoNamesKBBuilder {
             }
             return new StringBuilder();
         }else{
-            return dataBuilder;
+            if(dataBuilder.length()>=Common.EXPORT_MAXIMUM_FILESIZE){
+                try{
+                    BufferedWriter writer=new BufferedWriter(new FileWriter(new File(filename+"-"+(EXPORT_COUNTER++)+"."+Common.EXPORT_FILE_EXTENSION)));
+                    writer.append(dataBuilder.toString());
+                    writer.flush();
+                    writer.close();
+                }catch(IOException ex){
+                    log.error("An error occured while exporting dump",ex);
+                    throw new ThesaurusBuilderException("An error occured while exporting dump",ex);
+                }
+                return new StringBuilder();
+            }else{
+                return dataBuilder;
+            }
         }
     }
 
