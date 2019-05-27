@@ -17,6 +17,6 @@ public class Common {
     public static final String GEONAMES_PROPERTY_PARENT_COUNTRY=GEONAMES_ONTOLOGY_NS+"parentCountry";
     public static final String RDFS_PROPERTY_LABEL=RDFS_NS+"label";
     
-    public static final int EXPORT_MAXIMUM_FILESIZE=15000000;
+    public static final int EXPORT_MAXIMUM_FILESIZE=10000000;
     public static final String EXPORT_FILE_EXTENSION="trig";
 }

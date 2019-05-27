@@ -8,9 +8,14 @@ import com.smartupds.thesaurusbuilder.model.GeoNameEntry;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.log4j.Log4j;
@@ -26,7 +31,7 @@ public class GeoNamesKBBuilder {
     private Map<String,Triple<String,String,String>> countryInfo;
     private String geonamesDumpPath;
     private static final int INDEX_OF_CITIES_GEONAME_ID=0;
-    private static final int INDEX_OF_CITIES_NAME=1;
+    private static final int INDEX_OF_CITIES_NAME=2;
     private static final int INDEX_OF_CITIES_LATUTUDE=4;
     private static final int INDEX_OF_CITIES_LONGITUDE=5;
     private static final int INDEX_OF_CITIES_COUNTRY_CODE=8;
@@ -68,7 +73,7 @@ public class GeoNamesKBBuilder {
         log.info("Parsing data about cities from GeoNames dump");
         try{
             String line;
-            BufferedReader br=new BufferedReader(new FileReader(new File(this.geonamesDumpPath)));
+            BufferedReader br=new BufferedReader(new InputStreamReader(new FileInputStream(new File(this.geonamesDumpPath)), StandardCharsets.UTF_8));
             while((line=br.readLine())!=null){
                 String[] cityTokens=line.split("\t");
                 GeoNameEntry entry=new GeoNameEntry();
@@ -102,7 +107,7 @@ public class GeoNamesKBBuilder {
     public StringBuilder checkAndExport(StringBuilder dataBuilder, String filename, boolean ignoreSize) throws ThesaurusBuilderException{
         if(ignoreSize){
             try{
-                BufferedWriter writer=new BufferedWriter(new FileWriter(new File(filename+"-"+(EXPORT_COUNTER)+"."+Common.EXPORT_FILE_EXTENSION)));
+                BufferedWriter writer=new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(filename+"-"+(EXPORT_COUNTER)+"."+Common.EXPORT_FILE_EXTENSION)),StandardCharsets.UTF_8));
                 writer.append(dataBuilder.toString());
                 writer.flush();
                 writer.close();
